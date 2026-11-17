@@ -50,12 +50,12 @@ from Sales.Orders
 
 select 
 OrderID,
-count(*) over(Partition by OrderID)
+count(*) over(Partition by OrderID) as check_duplicate
 from Sales.Orders
 
 select
 *,
-count(*) over(partition by orderid)
+count(*) over(partition by orderid) as check_duplicate
 from Sales.OrdersArchive
 
 
@@ -206,3 +206,82 @@ select
     AVG(Sales) over(Partition by ProductID Order by OrderDate) as Moving_Avg,
     AVG(Sales) over(Partition by ProductID Order by OrderDate Rows between current Row And 1 following) rollingAVG
 from Sales.Orders
+
+
+
+
+/*
+-------Rank function----
+           |-Ranking function / Integer-Based Ranking         =    (row_number, rank, dense_rank)
+           |-Distribution function                            =    (percent_rank, cume_dist)
+
+
+           Rules
+rank()   ....rank function doesn't allow to use any expression inside(Expression must be empty)
+         ....Partition by is optional
+         ....order by is required
+         ....Frame are not allowed
+*/
+
+
+--Row_Number()
+
+--SQL Task
+--Rank the orders based on their sales from highest to lowest
+select
+OrderID,
+ProductID,
+Sales,
+ROW_NUMBER() over(Order by Sales Desc) as Sales_Rank_Row
+from Sales.Orders
+
+--Rank()   ....Assign a rank to each row and it handles ties
+
+select 
+OrderID,
+ProductID,
+Sales,
+RANK() over(Order by Sales Desc) as Sales_rank
+from Sales.Orders
+
+--Dense_Rank()    ....Assign a rank to each row, it handles ties, it doesn't leaves gaps in ranking
+select
+OrderID,
+ProductID,
+Sales,
+DENSE_RANK() over(Order by Sales Desc) as [Dense_Rank]
+from Sales.Orders
+
+--find the top highest sales for each product
+select
+*
+from(
+select
+    OrderID,
+    ProductID,
+    Sales,
+    ROW_NUMBER() over(partition by ProductID Order By Sales Desc) as HighestSalesForEachProduct
+    from Sales.Orders
+)t where HighestSalesForEachProduct = 1
+
+--find the lowest 2 customer based on their total sales
+select
+*
+from(
+select
+    CustomerID,
+    sum(Sales) as totalSales,
+    ROW_NUMBER() over(Order by sum(Sales)) as lowestForEachProduct
+from Sales.Orders
+group by CustomerID
+)t where lowestForEachProduct <= 2
+
+
+--Identify duplicate rows in the table'Order Archive' and return a clean result without any Duplicates
+select * 
+from(
+    select
+    ROW_NUMBER() over(Partition by orderid order by CreationTime Desc) rn,
+    *
+    from Sales.OrdersArchive
+)t where rn>1
