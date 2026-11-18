@@ -285,3 +285,69 @@ from(
     *
     from Sales.OrdersArchive
 )t where rn>1
+
+
+-- NTILE()     ....Divides the rows into a specified number of approximately equal groups(Brackets)
+/*
+
+formula       Bucket size = Number of Rows / Number of Buckets
+
+*/
+
+select
+OrderID,
+Sales,
+NTILE(4) over(order by Sales Desc) as fourBucket,
+NTILE(3) over(order by Sales Desc) as ThreeBucket,
+NTILE(2) over(order by Sales Desc) as TwoBucket,
+NTILE(1) over(order by Sales Desc) as OneBucket
+from Sales.Orders
+
+--Segment all orders into 3 categories: HIGH, Medium and Low Sales.
+select
+*,
+case when Buckets = 1 Then 'high'
+     when Buckets = 2 Then 'Medium'
+     when Buckets = 3 Then 'Low'
+END Sales_segmentations
+from (
+    select
+    OrderID,
+    Sales,
+    Ntile(3) over(Order by Sales Desc) as Buckets
+    from Sales.Orders
+)t
+
+/*
+Formula
+
+CUME_DIST = Position Nr / Number of Rows
+
+PERCENT_RANK = Position Nr -1 / Number of Rows -1
+*/
+
+--CUME_DIST()   ....Cumulative Distribution Calculates the Distribution of data points within a window
+
+--find the products that fall within the highest 40% of prices
+select
+*,
+CONCAT(DistRank * 100, '%') DistRankPerc
+from(
+    select
+        Product,
+        Price,
+        CUME_DIST() over(order by Price Desc) as DistRank
+    from Sales.Products
+)t where DistRank <= 0.4
+
+--using Percent_rank
+select 
+*,
+CONCAT(DistRank * 100, '%')
+from(
+    select
+        Product,
+        price,
+        PERCENT_RANK() over(order by Price Desc) as DistRank
+    from Sales.Products
+)t where DistRank <= 0.4
